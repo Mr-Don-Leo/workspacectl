@@ -27,8 +27,8 @@ dependencies = []
 devws = "devws.server:main"
 
 [project.urls]
-Homepage = "https://github.com/maxb2025/dev-workspace-manager"
-Issues = "https://github.com/maxb2025/dev-workspace-manager/issues"
+Homepage = "https://github.com/Mr-Don-Leo/linux-dev-workspace-manager"
+Issues = "https://github.com/Mr-Don-Leo/linux-dev-workspace-manager/issues"
 
 [tool.setuptools.packages.find]
 include = ["devws*"]

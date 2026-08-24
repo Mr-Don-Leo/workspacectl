@@ -37,7 +37,7 @@ devws
 **Option 3 — from source** (nothing to install):
 
 ```sh
-git clone https://github.com/maxb2025/dev-workspace-manager
+git clone https://github.com/Mr-Don-Leo/linux-dev-workspace-manager
 cd dev-workspace-manager
 python3 -m devws
 ```
