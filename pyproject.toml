@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dev-workspace-manager"
-version = "1.0.0"
+version = "1.1.0"
 description = "Local-first developer workspace manager: projects, dev servers, terminals, Docker Compose, Git status and ports — in one Apple-styled dashboard."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -24,7 +24,7 @@ classifiers = [
 dependencies = []
 
 [project.scripts]
-devws = "devws.server:main"
+devws = "devws.app:main"
 
 [project.urls]
 Homepage = "https://github.com/Mr-Don-Leo/linux-dev-workspace-manager"
