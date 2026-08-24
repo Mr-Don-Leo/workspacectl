@@ -27,7 +27,7 @@ def main() -> None:
             staging,
             target=out,
             interpreter="/usr/bin/env python3",
-            main="devws.server:main",
+            main="devws.app:main",
             compressed=True,
         )
     print(f"built {out} ({out.stat().st_size / 1024:.0f} KiB)")

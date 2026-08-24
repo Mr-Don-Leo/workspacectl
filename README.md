@@ -10,7 +10,8 @@ Point it at that directory once, and every subfolder becomes a managed project:
 - 🌿 **Git at a glance** — branch, ahead/behind, staged / modified / untracked counts, last commit
 - 🔌 **Ports** — see which ports each dev server is listening on, click to open
 
-Apple-inspired UI with light & dark mode, custom controls, no frameworks.
+A native desktop app (GTK4 + WebKitGTK on Linux) with an Apple-inspired interface —
+light & dark mode, custom controls, no frameworks, no browser needed.
 
 ## Lightweight & private by design
 
@@ -27,6 +28,9 @@ Apple-inspired UI with light & dark mode, custom controls, no frameworks.
 python3 devws.pyz
 ```
 
+It opens as its own desktop window. To add it to your application menu with an
+icon, clone the repo and run `scripts/install_desktop.sh`.
+
 **Option 2 — pip:**
 
 ```sh
@@ -42,21 +46,30 @@ cd dev-workspace-manager
 python3 -m devws
 ```
 
-Then open **http://127.0.0.1:8765**, pick the folder that contains your projects, and you're set.
+A window opens; pick the folder that contains your projects and you're set.
 
-Requires Python ≥ 3.10 on Linux or macOS. Docker features light up automatically when the `docker` CLI is present; everything else works without it.
+Requires Python ≥ 3.10. The native window uses GTK4 + WebKitGTK via PyGObject —
+preinstalled on Fedora/GNOME and most modern Linux desktops. Where it's missing,
+the app falls back to opening in your default browser. Docker features light up
+automatically when the `docker` CLI is present; everything else works without it.
 
 ```
-devws [--host 127.0.0.1] [--port 8765] [--config path/to/config.json]
+devws                          # native app window (default)
+devws --serve [--port 8765]    # headless: HTTP server only
 ```
 
-> ⚠️ Keep the default host. The app starts processes on your machine, so it must not be exposed to a network.
+In window mode the internal server binds to 127.0.0.1 on a random ephemeral
+port that only the app's own window talks to.
+
+> ⚠️ In `--serve` mode, keep the default host. The app starts processes on your
+> machine, so it must not be exposed to a network.
 
 ## How it works
 
 ```
 devws/
-├── server.py            HTTP + JSON API (stdlib http.server, threaded)
+├── app.py               native window shell (GTK4 + WebKitGTK, browser fallback)
+├── server.py            internal HTTP + JSON API (stdlib http.server, threaded)
 ├── services/
 │   ├── config.py        atomic JSON workspace store
 │   ├── processes.py     process orchestration: process groups, log ring buffers,
@@ -70,7 +83,7 @@ devws/
 
 ## Tests
 
-67 tests cover process orchestration, Git, Docker Compose, configuration,
+70 tests cover process orchestration, Git, Docker Compose, configuration,
 project detection, port parsing, and the HTTP API end-to-end:
 
 ```sh

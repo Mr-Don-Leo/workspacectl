@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Developer Workspaces
+GenericName=Workspace Manager
+Comment=Manage your projects: dev servers, terminals, Docker Compose, Git status and ports
+Exec=devws
+Icon=io.github.MrDonLeo.DevWorkspaceManager
+Terminal=false
+Type=Application
+Categories=Development;Utility;
+Keywords=workspace;project;dev;server;docker;git;ports;
+StartupWMClass=io.github.MrDonLeo.DevWorkspaceManager
