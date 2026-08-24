@@ -327,16 +327,9 @@ def make_server(host: str = "127.0.0.1", port: int = 8765,
     return httpd, app
 
 
-def main() -> None:
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Developer Workspace Manager")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8765)
-    parser.add_argument("--config", default=None, help="path to config.json")
-    args = parser.parse_args()
-
-    httpd, app = make_server(args.host, args.port, args.config)
+def serve_forever(host: str, port: int, config_path: str | None = None) -> None:
+    """Run the HTTP server in the foreground until SIGINT/SIGTERM."""
+    httpd, app = make_server(host, port, config_path)
 
     def shutdown(*_sig):
         threading.Thread(target=httpd.shutdown, daemon=True).start()
@@ -344,9 +337,17 @@ def main() -> None:
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    print(f"Developer Workspace Manager → http://{args.host}:{args.port}")
+    print(f"Developer Workspace Manager → http://{host}:{httpd.server_address[1]}")
     try:
         httpd.serve_forever()
     finally:
         app.orchestrator.shutdown()
         print("stopped all managed processes, bye")
+
+
+def main() -> None:
+    # kept as an alias so `devws.server:main` keeps working; the app shell
+    # owns argument parsing and window/serve selection
+    from .app import main as app_main
+
+    app_main()
