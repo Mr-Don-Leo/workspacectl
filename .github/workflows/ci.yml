@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write # needed to attach release assets
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build single-file app (devws.pyz)
+        run: python scripts/build_pyz.py dist/devws.pyz
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+      - name: Smoke-test the pyz
+        run: |
+          python dist/devws.pyz --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devws-build
+          path: |
+            dist/devws.pyz
+            dist/*.whl
+            dist/*.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: devws-build
+          path: dist
+      - name: Create GitHub Release with downloadable builds
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/devws.pyz
+            dist/*.whl
+            dist/*.tar.gz
+          generate_release_notes: true
