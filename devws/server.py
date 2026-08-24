@@ -35,6 +35,9 @@ class App:
         self.config = ConfigStore(config_path)
         self.orchestrator = Orchestrator()
         self.compose = ComposeService()
+        # optional callback fired after settings change (used by the native
+        # window shell to restyle its chrome when the theme switches)
+        self.on_settings_changed = None
 
     # -- helpers ----------------------------------------------------------
 
@@ -314,7 +317,10 @@ class Handler(BaseHTTPRequestHandler):
             return ports.all_listening_ports()
 
         if (method, path) == ("POST", "/api/settings"):
-            return app.config.update_settings(self._read_body())
+            result = app.config.update_settings(self._read_body())
+            if app.on_settings_changed is not None:
+                app.on_settings_changed(result)
+            return result
 
         raise ApiError(f"no route: {method} {path}", 404)
 
