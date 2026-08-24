@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dev-workspace-manager"
+version = "1.0.0"
+description = "Local-first developer workspace manager: projects, dev servers, terminals, Docker Compose, Git status and ports — in one Apple-styled dashboard."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "dev-workspace-manager contributors" }]
+keywords = ["developer-tools", "workspace", "process-manager", "docker", "git"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Web Environment",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+]
+dependencies = []
+
+[project.scripts]
+devws = "devws.server:main"
+
+[project.urls]
+Homepage = "https://github.com/maxb2025/dev-workspace-manager"
+Issues = "https://github.com/maxb2025/dev-workspace-manager/issues"
+
+[tool.setuptools.packages.find]
+include = ["devws*"]
+
+[tool.setuptools.package-data]
+devws = ["static/*"]
