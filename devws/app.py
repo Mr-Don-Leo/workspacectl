@@ -37,13 +37,50 @@ def _serve_in_background(host: str, port: int, config_path: str | None):
     return httpd, app, actual_port
 
 
+def apply_chrome_theme(theme: str | None) -> None:
+    """Match the window chrome (titlebar/borders) to the app theme.
+
+    ``theme`` is "dark", "light", or None/"" for follow-the-system. Uses
+    libadwaita's style manager when present, else GTK's dark-theme hint.
+    """
+    try:
+        import gi
+
+        gi.require_version("Adw", "1")
+        from gi.repository import Adw
+
+        scheme = {
+            "dark": Adw.ColorScheme.FORCE_DARK,
+            "light": Adw.ColorScheme.FORCE_LIGHT,
+        }.get(theme or "", Adw.ColorScheme.DEFAULT)
+        Adw.StyleManager.get_default().set_color_scheme(scheme)
+        return
+    except (ImportError, ValueError):
+        pass
+    from gi.repository import Gtk
+
+    gtk_settings = Gtk.Settings.get_default()
+    if gtk_settings is not None:
+        gtk_settings.set_property(
+            "gtk-application-prefer-dark-theme", theme == "dark"
+        )
+
+
 def run_window(config_path: str | None = None) -> int:
     """Launch the native window; returns the process exit code."""
     import gi
 
     gi.require_version("Gtk", "4.0")
     gi.require_version("WebKit", "6.0")
-    from gi.repository import Gio, Gtk, WebKit
+    from gi.repository import Gio, GLib, Gtk, WebKit
+
+    try:
+        gi.require_version("Adw", "1")
+        from gi.repository import Adw
+
+        Adw.init()  # loads the libadwaita stylesheet so chrome recolors work
+    except (ImportError, ValueError):
+        pass
 
     # ephemeral port: nothing else can guess-collide, nothing is "hosted"
     httpd, app, port = _serve_in_background("127.0.0.1", 0, config_path)
@@ -62,6 +99,11 @@ def run_window(config_path: str | None = None) -> int:
         return None
 
     def on_activate(gapp):
+        apply_chrome_theme(app.config.get_settings().get("theme"))
+        # theme changes from the in-app Settings panel restyle the chrome live
+        app.on_settings_changed = lambda s: GLib.idle_add(
+            apply_chrome_theme, s.get("theme")
+        )
         win = Gtk.ApplicationWindow(application=gapp, title=APP_TITLE)
         win.set_default_size(1240, 840)
         webview = WebKit.WebView()

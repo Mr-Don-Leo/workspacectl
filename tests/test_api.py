@@ -133,6 +133,17 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(resp.status, 200)
         self.assertIn("Workspace", body)
 
+    def test_08a_settings_change_fires_listener(self):
+        seen = []
+        self.app.on_settings_changed = seen.append
+        try:
+            status, _ = self.request("POST", "/api/settings", {"theme": "dark"})
+            self.assertEqual(status, 200)
+            self.assertEqual(seen, [{"theme": "dark"}])
+        finally:
+            self.app.on_settings_changed = None
+            self.request("POST", "/api/settings", {"theme": ""})
+
     def test_09_workspace_delete(self):
         status, _ = self.request("DELETE", f"/api/workspaces/{self.ws_id}")
         self.assertEqual(status, 200)

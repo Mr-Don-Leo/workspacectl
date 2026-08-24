@@ -79,6 +79,62 @@ class ProjectScanTests(unittest.TestCase):
         self.assertEqual(listing["parent"], os.path.dirname(self.root))
 
 
+class EditorLaunchTests(unittest.TestCase):
+    def test_folder_aware_gui_editor_gets_directory_argument(self):
+        argv = projects.editor_launch_argv("code", "/work/app", "ptyxis")
+        self.assertEqual(argv, ["code", "/work/app"])
+
+    def test_plain_gui_editor_launches_bare(self):
+        argv = projects.editor_launch_argv("gnome-text-editor", "/work/app", None)
+        self.assertEqual(argv, ["gnome-text-editor"])
+
+    def test_terminal_editor_wrapped_in_terminal_at_project_dir(self):
+        argv = projects.editor_launch_argv("nano", "/work/app", "ptyxis")
+        self.assertEqual(
+            argv,
+            ["ptyxis", "--new-window", "--working-directory", "/work/app", "-x", "nano"],
+        )
+
+    def test_terminal_editor_with_absolute_path(self):
+        argv = projects.editor_launch_argv("/usr/bin/vim", "/work/app", "gnome-terminal")
+        self.assertEqual(
+            argv,
+            ["gnome-terminal", "--working-directory=/work/app", "--", "/usr/bin/vim"],
+        )
+
+    def test_terminal_editor_without_terminal_raises(self):
+        with self.assertRaisesRegex(RuntimeError, "terminal"):
+            projects.editor_launch_argv("nano", "/work/app", None)
+
+    def test_unknown_gui_editor_falls_back_to_dir_argument(self):
+        argv = projects.editor_launch_argv("myeditor", "/work/app", None)
+        self.assertEqual(argv, ["myeditor", "/work/app"])
+
+    def test_available_editors_excludes_console_editor_without_terminal(self):
+        from unittest.mock import patch
+
+        def which(cmd):
+            return f"/usr/bin/{os.path.basename(cmd)}" if os.path.basename(cmd) in ("nano",) else None
+
+        with patch.object(projects.shutil, "which", side_effect=which), \
+             patch.dict(os.environ, {"EDITOR": "nano"}):
+            self.assertEqual(projects.available_editors(), [])
+
+    def test_available_editors_includes_console_editor_with_terminal(self):
+        from unittest.mock import patch
+
+        def which(cmd):
+            return (
+                f"/usr/bin/{os.path.basename(cmd)}"
+                if os.path.basename(cmd) in ("nano", "ptyxis")
+                else None
+            )
+
+        with patch.object(projects.shutil, "which", side_effect=which), \
+             patch.dict(os.environ, {"EDITOR": "nano"}):
+            self.assertEqual(projects.available_editors(), ["nano"])
+
+
 class PortsTests(unittest.TestCase):
     SAMPLE = (
         "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode\n"

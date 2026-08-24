@@ -33,7 +33,7 @@ _MARKERS = [
 
 TERMINAL_CANDIDATES = [
     ("gnome-terminal", ["gnome-terminal", "--working-directory={dir}"]),
-    ("ptyxis", ["ptyxis", "--working-directory", "{dir}"]),
+    ("ptyxis", ["ptyxis", "--new-window", "--working-directory", "{dir}"]),
     ("konsole", ["konsole", "--workdir", "{dir}"]),
     ("kitty", ["kitty", "--directory", "{dir}"]),
     ("alacritty", ["alacritty", "--working-directory", "{dir}"]),
@@ -41,13 +41,34 @@ TERMINAL_CANDIDATES = [
     ("xterm", ["xterm", "-e", "cd {dir} && exec $SHELL"]),
 ]
 
+# how each terminal emulator runs a command inside a directory
+TERMINAL_RUN_TEMPLATES = {
+    "gnome-terminal": ["gnome-terminal", "--working-directory={dir}", "--", "{cmd}"],
+    "ptyxis": ["ptyxis", "--new-window", "--working-directory", "{dir}", "-x", "{cmd}"],
+    "konsole": ["konsole", "--workdir", "{dir}", "-e", "{cmd}"],
+    "kitty": ["kitty", "--directory", "{dir}", "{cmd}"],
+    "alacritty": ["alacritty", "--working-directory", "{dir}", "-e", "{cmd}"],
+    "foot": ["foot", "--working-directory={dir}", "{cmd}"],
+    "xterm": ["xterm", "-e", "{cmd}"],
+}
+
+# GUI editors that open a folder as a project take {dir}; plain GUI editors
+# are launched with the project as their working directory instead
 EDITOR_CANDIDATES = [
     ("code", ["code", "{dir}"]),
     ("codium", ["codium", "{dir}"]),
     ("subl", ["subl", "{dir}"]),
     ("zed", ["zed", "{dir}"]),
     ("idea", ["idea", "{dir}"]),
+    ("gnome-text-editor", ["gnome-text-editor"]),
+    ("gedit", ["gedit"]),
+    ("kate", ["kate"]),
+    ("mousepad", ["mousepad"]),
+    ("geany", ["geany"]),
 ]
+
+# console editors must run inside a terminal emulator, not detached
+TERMINAL_EDITORS = {"nano", "vim", "nvim", "vi", "micro", "hx", "helix", "emacs"}
 
 _IGNORED_DIRS = {"node_modules", ".git", ".venv", "venv", "__pycache__", "dist", "build"}
 
@@ -127,11 +148,54 @@ def available_terminals() -> list[str]:
 
 
 def available_editors() -> list[str]:
+    """Editors usable on this device.
+
+    Console editors ($EDITOR like nano/vim) count only when there is a
+    terminal emulator to run them in.
+    """
     found = [name for name, _ in EDITOR_CANDIDATES if shutil.which(name)]
+    have_terminal = bool(available_terminals())
     env_editor = os.environ.get("EDITOR")
-    if env_editor and shutil.which(env_editor) and env_editor not in found:
-        found.append(env_editor)
+    candidates = [env_editor] if env_editor else []
+    candidates += sorted(TERMINAL_EDITORS)
+    for cand in candidates:
+        base = os.path.basename(cand)
+        if base in {os.path.basename(f) for f in found}:
+            continue
+        if not shutil.which(cand):
+            continue
+        if base in TERMINAL_EDITORS and not have_terminal:
+            continue
+        found.append(cand)
     return found
+
+
+def editor_launch_argv(editor: str, project_dir: str,
+                       terminal: str | None) -> list[str]:
+    """Build the argv that opens ``editor`` on the project folder.
+
+    - folder-aware GUI editors get the directory as an argument
+    - plain GUI editors launch with the project as working directory
+    - console editors run inside ``terminal`` at the project directory
+    """
+    base = os.path.basename(editor)
+    if base in TERMINAL_EDITORS:
+        if not terminal or terminal not in TERMINAL_RUN_TEMPLATES:
+            raise RuntimeError(
+                f"{base} is a terminal editor but no terminal emulator is available"
+            )
+        template = TERMINAL_RUN_TEMPLATES[terminal]
+        argv = []
+        for part in template:
+            if part == "{cmd}":
+                argv.append(editor)
+            else:
+                argv.append(part.replace("{dir}", project_dir))
+        return argv
+    for name, template in EDITOR_CANDIDATES:
+        if name == base:
+            return [part.replace("{dir}", project_dir) for part in template]
+    return [editor, project_dir]
 
 
 def _launch_detached(argv: list[str], cwd: str) -> int:
@@ -159,16 +223,19 @@ def open_terminal(project_dir: str, preferred: str | None = None) -> dict:
 
 
 def open_editor(project_dir: str, preferred: str | None = None) -> dict:
-    candidates = list(EDITOR_CANDIDATES)
-    env_editor = os.environ.get("EDITOR")
-    if env_editor and env_editor not in {n for n, _ in candidates}:
-        candidates.append((env_editor, [env_editor, "{dir}"]))
-    name, template = _first_available(candidates, preferred)
-    if name is None:
-        raise RuntimeError("no editor found (set $EDITOR or install VS Code)")
-    argv = [part.replace("{dir}", project_dir) for part in template]
+    editors = available_editors()
+    if preferred and shutil.which(preferred):
+        editor = preferred
+    elif preferred and preferred in editors:
+        editor = preferred
+    elif editors:
+        editor = editors[0]
+    else:
+        raise RuntimeError("no editor found (set $EDITOR or install one)")
+    terminals = available_terminals()
+    argv = editor_launch_argv(editor, project_dir, terminals[0] if terminals else None)
     pid = _launch_detached(argv, project_dir)
-    return {"tool": name, "pid": pid}
+    return {"tool": os.path.basename(editor), "pid": pid}
 
 
 # -- filesystem browsing for the directory picker -------------------------
